@@ -36,7 +36,8 @@
       open(unit=2050,file='graficas/RivsN.dat',recl=200)
       open(unit=2070,file='graficas/RcvsN.dat',recl=200)
       open(unit=2090,file='graficas/RvsN.dat',recl=200)
-      OPEN(UNIT=305,FILE='datos/DFS.csv',recl=200)
+      OPEN(UNIT=305,FILE='datos/DFS.csv',status="replace",recl=200)
+      close(305)
       
       CALL START
       CALL MCARLO
@@ -625,11 +626,12 @@
          END DO
       end if
 
+      if (mod(NCOUNT,10).eq.0) then
       if (ctrl.eq.0) then
       file = 2703
       open(2703,file='datos/Sdf0.dat', recl=200)
       else 
-      z = 2704
+      file = 2704
       open(2704,file='datos/Sdf1.dat', recl=200)
       end if
 
@@ -639,20 +641,22 @@
 
       space = ' '
 2077  format (I4)
-      if (mod(NCOUNT,500).eq.0) then
+      if (mod(NCOUNT,5000).eq.0) then
       if (ctrl.eq.0) then
          close(2703)
          fn = 'python FracMC.py "datos\Sdf0.dat"'
-         write(ctn, 2077) mod(NCOUNT,500)
-         call system(trim(fn)//space//adjustl(ctn)) 
+         write(ctn, 2077) NCOUNT/5000-1
+         call execute_command_line(trim(fn)//space//adjustl(ctn)
+     +        ,wait=.true.) 
       else 
          close(2704)
          fn = 'python FracMC.py "datos\Sdf1.dat"'
-         write(ctn, 2077) mod(NCOUNT,500)
-         call system(trim(fn)//space//adjustl(ctn)) 
+         write(ctn, 2077) NCOUNT/5000-1
+         call execute_command_line(trim(fn)//space//adjustl(ctn)
+     +        ,wait=.true.) 
       end if
-
-      ctrl = ctrl -1
+      ctrl = 1-ctrl
+      end if
       end if
 
       IF (NCOUNT.EQ.NGOFR.AND.LGOFR) CALL GOFR
@@ -692,6 +696,15 @@
       XXX = XNTEST/XXMOV
 
       ! verifica si es necesario cambiar desplazamiento maximo
+      
+      if (mod(NCOUNT,500).eq.0) then
+         RATACCI=DFLOAT(NAXPTIND)/DFLOAT(Nind)  
+         DISPL2=DISPL*(0.65/(1-RATACCI))
+         if (DISPL2.le.2.d0) then
+            DISPL=DISPL2
+         end if
+      end if 
+
       !IF (DFLOAT(NACCPT)/DFLOAT(NCOUNT).GT.0.45) DISPL2=DISPL*1.20
       !IF (DFLOAT(NACCPT)/DFLOAT(NCOUNT).LT.0.35) DISPL2=DISPL*0.80
       !IF (DISPL2.LE.2.D0) DISPL=DISPL2
@@ -1159,11 +1172,12 @@ C ENCUENTRA EN EL ARCHIVO extra.txt
          
       end if
 
+      if (mod(NCOUNT,10).eq.0) then
       if (ctrl.eq.0) then
       file = 2703
       open(2703,file='datos/Sdf0.dat', recl=200)
       else 
-      z = 2704
+      file = 2704
       open(2704,file='datos/Sdf1.dat', recl=200)
       end if
 
@@ -1172,20 +1186,22 @@ C ENCUENTRA EN EL ARCHIVO extra.txt
       end do
 
       space = ' '
-      if (mod(NCOUNT,500).eq.0) then
+      if (mod(NCOUNT,5000).eq.0) then
       if (ctrl.eq.0) then
          close(2703)
          fn = 'python FracMC.py "datos\Sdf0.dat"'
-         write(ctn, 2077) mod(NCOUNT,500)
-         call system(trim(fn)//space//adjustl(ctn)) 
+         write(ctn, 2077) NCOUNT/5000-1
+         call execute_command_line(trim(fn)//space//adjustl(ctn)
+     +        ,wait=.true.) 
       else 
          close(2704)
          fn = 'python FracMC.py "datos\Sdf1.dat"'
-         write(ctn, 2077) mod(NCOUNT,500)
-         call system(trim(fn)//space//adjustl(ctn)) 
+         write(ctn, 2077) NCOUNT/5000-1
+         call execute_command_line(trim(fn)//space//adjustl(ctn)
+     +        ,wait=.true.) 
       end if
-
-      ctrl = ctrl -1
+      ctrl = 1-ctrl
+      end if
       end if
 
 
@@ -1215,7 +1231,20 @@ C ENCUENTRA EN EL ARCHIVO extra.txt
       NSUB=NSUB+NSUB0 ! le agrega la parte inicial del contador 
       XXMOV = DFLOAT(NMOVE)  ! movimiento de en x 
       XXX = XNTEST/XXMOV ! razon entre los pasos en x contra el movimiento 
+      
       ! verifica si es necesario cambiar desplazamiento maximo
+
+      if (mod(NCOUNT,500).eq.0) then
+         RATACCC=DFLOAT(NAXPTCLU)/DFLOAT(NCL)  
+         DISPL2=DISPLClu*(0.6/(1-RATACCC))
+         DISPL3=DISPLAng*(0.6*(1-0.1*(RAN2(ISEED)-0.5D0))/(1-RATACCC))
+         if (DISPL2.le.2.d0) then
+            DISPLClu=DISPL2
+            DISPLAng=DISPL3
+         end if
+      end if 
+
+      
       !IF (DFLOAT(NACCPT)/DFLOAT(NCOUNT).GT.0.45) DISPLClu2=DISPLClu*1.20
       !IF (DFLOAT(NACCPT)/DFLOAT(NCOUNT).LT.0.35) DISPLClu2=DISPLClu*0.80
       !IF (DFLOAT(NACCPT)/DFLOAT(NCOUNT).GT.0.45) DISPLAng=DISPLAng*1.20
