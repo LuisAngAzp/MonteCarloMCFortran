@@ -11,7 +11,7 @@
      +                 CLU(NPART,NPART)
       COMMON /BCONSTR/ PI,ETA,RHO,XLAMBDA,XLAM2,XLAM3,SL2,SQL2,
      +                 SL3,SQL3,XN,TEMP,DISPL,DISPLAng, DISPLClu,XHISTG,
-     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,
+     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,P,DVOL,
      +                 XL,YL,Y2,RA3,A1, A2, A3, A4,a,b,tension,b_sigma
       COMMON /BCONSTG/ DR1,DR2,DR3,DR4,DR5,PHI,TAU
       COMMON /BCOSTRX/ SL4,SQL4,SL5,SQL5,XLAM4,XLAM5
@@ -60,7 +60,7 @@
      +                 CLU(NPART,NPART)
       COMMON /BCONSTR/ PI,ETA,RHO,XLAMBDA,XLAM2,XLAM3,SL2,SQL2,
      +                 SL3,SQL3,XN,TEMP,DISPL,DISPLAng, DISPLClu,XHISTG,
-     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,
+     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,P,DVOL,
      +                 XL,YL,Y2,RA3,A1, A2, A3, A4,a,b,tension,b_sigma
       COMMON /BCONSTG/ DR1,DR2,DR3,DR4,DR5,PHI,TAU
       COMMON /BCOSTRX/ SL4,SQL4,SL5,SQL5,XLAM4,XLAM5
@@ -79,7 +79,7 @@
      +                 XLAM6,NRUN,NMOVE,NCLU,NMC,NSUB,DISPL,DISPLAng ,
      +                 DISPLClu,DS,RA3,IAV,NAC,NCX,NCY,QX,QY,SDISPL,
      +                 NGOFR,LGOFR,JUSTNPT,XHISTG,AR, A1, A2, A3,
-     +                 A4,a,b,tension
+     +                 A4,a,b,tension,P,DVOL
 
 
       ! ACUMULADORES A CERO
@@ -160,27 +160,31 @@
                   ELSE IF (Y.LT.-Y2) THEN
                      Y=Y+YC
                   END IF
-
                   RR=X*X+Y*Y
+
                   !!!!CONDICIONES DE TRASLAPE
                   GGG = 2.00 +(AR-(1/AR))**2*
      +             (sin((RA(J)-RA(I))*PI/180))**2
-                  F1=-((X*cos(RA(I)*PI/180)+ Y*sin(RA(I)*PI/180))**2)
-                  F1=F1/(AR*S/2)**2
-                  F1=F1+1.00 + GGG
 
-                  F1=F1-((Y*cos(RA(I)*PI/180)- X*sin(RA(I)*PI/180))**2)
-     +             /(S*S/4)
+                  angr = RA(I)*PI/180
+                  F1 = 1.00+GGG
+                  F1 = F1-(X*cos(angr)+Y*sin(angr))**2/(AR*S/2)**2
+                  F1 = F1-(X*sin(angr)-Y*cos(angr))**2/(S/2)**2
 
-                  F2=-((X*cos(RA(J)*PI/180)+ Y*sin(RA(J)*PI/180))**2)
-                  F2=F2/(AR*S/2)**2
-                  F2=F2+1.00 +GGG
-                  F2=F2-((Y*cos(RA(J)*PI/180)- X*sin(RA(J)*PI/180))**2)
-     +             /(S*S/4)
+                  angr = RA(J)*PI/180
+                  F2 = 1.00+GGG
+                  F2 = F2-(X*cos(angr)+Y*sin(angr))**2/(AR*S/2)**2
+                  F2 = F2-(X*sin(angr)-Y*cos(angr))**2/(S/2)**2
+
+                  FI = 4*(F1**2-3*F2)*(F2**2-3*F1)-(9-F1*F2)**2
+
+                  !FI=0 es tangencia
+                  !no puntos en com�n es FI positiva y al menos uno de f1, f2 negativos
+               
                   FI=4*(F1**2-3*F2)*(F2**2-3*F1)-(9-F1*F2)**2
 
-                  if (FI.lt.0.or.(FI.gt.0.and.F1>=0.and.F2>=0)
-     +             .or.RR.lt.S*S) THEN    !True si se translapan, en ese caso se vuelve a elegir una nueva posición
+                  if (.not.((FI==0).or.((FI.gt.0).and.
+     +             ((F1.lt.0).or.(F2.lt.0))))) THEN    !True si se translapan, en ese caso se vuelve a elegir una nueva posición
                      NTRY=NTRY+1
                      GOTO 9
                   end if
@@ -348,7 +352,7 @@
      +                 CLU(NPART,NPART)
       COMMON /BCONSTR/ PI,ETA,RHO,XLAMBDA,XLAM2,XLAM3,SL2,SQL2,
      +                 SL3,SQL3,XN,TEMP,DISPL,DISPLAng, DISPLClu,XHISTG,
-     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,
+     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,P,DVOL,
      +                 XL,YL,Y2,RA3,A1, A2, A3, A4,a,b,tension,b_sigma
       COMMON /BCONSTG/ DR1,DR2,DR3,DR4,DR5,PHI,TAU
       COMMON /BCOSTRX/ SL4,SQL4,SL5,SQL5,XLAM4,XLAM5
@@ -363,6 +367,7 @@
       DOUBLE PRECISION, PARAMETER:: kb=1.380649D-23
       real(8) :: EX(NPART*9), EY(NPART*9), EA(NPART*9)
       real*8 :: AUX1(NPART), AUX2(NPART), AUX3(NPART)
+      real*8 :: VOLD, VNEW, Kbb, b_saux
       integer :: control
       integer :: ctrl, file
       character (len=40) :: fn 
@@ -373,7 +378,9 @@
       ISEED=-123456789 !-1234556789  ! 
       A=AR*S/2 !semieje mayor en unidad de caja
       B=S/2    !semieje menor en unidad de caja
-      b_sigma=(1d-6/2d0) !semieje mejor en metros (suponiendo que sigma=1micrometro)
+      b_sigma=1.d0 !nueva suposicion el tamaño esta parametrizado a 1 u !semieje mejor en metros (suponiendo que sigma=1micrometro)
+      kbb=b_sigma/B ! relacion entre el tamaño real y el simulado
+      VOLD=1.D0
 
       ALL=.true.
       UTOT=0
@@ -384,7 +391,7 @@
          
       NCLU0=NCLU
       NMC0=NMC
-      NGIF=NMOVE/120
+      NGIF=NMOVE/10
       NGIF0=NGIF
       jtest=1
       
@@ -432,12 +439,16 @@
       NERCONT = NERCONT+1
       RTEST=RTEST+RAN2(ISEED)
 
+      ! Cambia el volumen
+      SNEW = S+DS*(2*RAN2(ISEED)-1.D00)
+      VNEW = VOLD*(SNEW/S)*Kbb**2
+
       ! desplaza la part!cula
-      XNEW=RX(I)+DISPL*(RAN2(ISEED)-0.5D00)
-      YNEW=RY(I)+DISPL*(RAN2(ISEED)-0.5D00)
+      XNEW=RX(I)+DISPL*(2*RAN2(ISEED)-1.D00)
+      YNEW=RY(I)+DISPL*(2*RAN2(ISEED)-1.D00)
 
       !angular
-      ANEW=RA(I)+DISPLAng*(RAN2(ISEED)-0.5D0)
+      ANEW=RA(I)+DISPLAng*(2*RAN2(ISEED)-0.5D0)
       
       !condicion periodica de frontera
       IF(XNEW.GT.1.0D00) THEN
@@ -459,20 +470,106 @@
       end if
 
       !Revisión a pares del correcto funcionamiento de las condiciones
-      !if ((XNEW.gt.1.d0).or.(XNEW.lt.0.d0)) then
-      !   write(*,*) "NCOUNT=", NCOUNT
-      !   write(*,*) "Displ=", DISPL
-      !   write(*,*) "RX=", RX(I)
-      !end if
-      !if ((YNEW.gt.1.d0).or.(YNEW.lt.0.d0)) then
-      !   write(*,*) "NCOUNT=", NCOUNT
-      !   write(*,*) "Displ=", DISPL
-      !   write(*,*) "RY=", RY(I)
-      !end if
+      if ((XNEW.gt.1.d0).or.(XNEW.lt.0.d0)) then
+         write(*,*) "NCOUNT=", NCOUNT
+         write(*,*) "Displ=", DISPL
+         write(*,*) "RX=", RX(I)
+      end if
+      if ((YNEW.gt.1.d0).or.(YNEW.lt.0.d0)) then
+         write(*,*) "NCOUNT=", NCOUNT
+         write(*,*) "Displ=", DISPL
+         write(*,*) "RY=", RY(I)
+      end if
+
+      DO J=1,N-1
+         do k=j+1,N
+         if (k.eq.i) then 
+         X=RX(J)-XNEW
+         Y=RY(J)-YNEW
+         else if (j.eq.i) then 
+         X=RX(K)-XNEW
+         Y=RY(K)-YNEW
+         else 
+         X=RX(J)-RX(K)
+         Y=RY(J)-RJ(K)
+         end if
+
+         ! convencion de imagen m!nima
+         IF (X.GT.0.5D00) THEN
+            X=X-1.0D00
+         ELSE IF (X.LT.-0.5D00) THEN
+            X=X+1.0D00
+         END IF
+
+         IF (Y.GT.Y2) THEN
+            Y=Y-YC
+         ELSE IF (Y.LT.-Y2) THEN
+            Y=Y+YC
+         END IF
+         X = Kbb*X
+         Y = Kbb*Y
+         RR=X*X+Y*Y
+
+         !!!!CONDICIONES DE TRASLAPE
+         GGG = 2.00 +(AR-(1/AR))**2*(sin((RA(J)-ANEW)*PI/180))**2
+         angr = ANEW*PI/180
+         F1 = 1.00+GGG
+         F1 = F1-(X*cos(angr)+Y*sin(angr))**2/(AR*S/2)**2
+         F1 = F1-(X*sin(angr)-Y*cos(angr))**2/(S/2)**2
+
+         angr = RA(J)*PI/180
+         F2 = 1.00+GGG
+         F2 = F2-(X*cos(angr)+Y*sin(angr))**2/(AR*S/2)**2
+         F2 = F2-(X*sin(angr)-Y*cos(angr))**2/(S/2)**2
+
+         FI = 4*(F1**2-3*F2)*(F2**2-3*F1)-(9-F1*F2)**2
+
+         !FI=0 es tangencia
+         !no puntos en com�n es FI positiva y al menos uno de f1, f2 negativos
+      
+         if (.not.((FI==0).or.((FI.gt.0).and.((F1.lt.0).or.(F2.lt.0))))) !TRUE si se translapan
+     +    GOTO 3
+         end do
+      end do
 
       ! elimina particulas traslapadas
       ! y calcula la nueva energia (provisional)
+
+      !Calculo de la energía de antes o actual del sistema   
+      UOLD=0.0D00
+      b_saux = b_sigma
+      DO 4 J=1,N
+         IF (J.EQ.I) GOTO 4
+         X=RX(J)-RX(I)
+         Y=RY(J)-RY(I)
+      
+         ! convencion de imagen m!nima
+         IF (X.GT.0.5D00) THEN
+            X=X-1.0D00
+         ELSE IF (X.LT.-0.5D00) THEN
+            X=X+1.0D00
+         END IF
+         IF (Y.GT.Y2) THEN
+            Y=Y-YC
+         ELSE IF (Y.LT.-Y2) THEN
+            Y=Y+YC
+         END IF
+         X = Kbb*X
+         Y = Kbb*Y
+         RR=X*X+Y*Y
+
+         !!!!!!! CAMBIAR
+         !!Energia pozos angulares
+
+         if (RR.lt.(5*Kbb*S*AR/2)**2  )then !CHECAR condición if
+            ALL=.false.
+            call ENERG(UOLD, ALL, X, Y, RA(I), RA(J))
+
+         end if
+    4 CONTINUE
+
       UNEW=0.0D00
+      b_sigma=Kbb*SNEW/2
 
       DO 2 J=1,N
          IF (J.EQ.I) GOTO 2   !Si es la misma partícula continua con el siguiente numero
@@ -491,86 +588,67 @@
          ELSE IF (Y.LT.-Y2) THEN
             Y=Y+YC
          END IF
+         X = Kbb*X
+         Y = Kbb*Y
          RR=X*X+Y*Y
-      
 
          !!!!CONDICIONES DE TRASLAPE
          GGG = 2.00 +(AR-(1/AR))**2*(sin((RA(J)-ANEW)*PI/180))**2
+         angr = ANEW*PI/180
+         F1 = 1.00+GGG
+         F1 = F1-(X*cos(angr)+Y*sin(angr))**2/(AR*S/2)**2
+         F1 = F1-(X*sin(angr)-Y*cos(angr))**2/(S/2)**2
 
-         F1=1.00 + GGG
-         F1=F1-((X*cos(ANEW*PI/180)+ Y*sin(ANEW*PI/180))**2)/(AR*S/2)**2
-         F1=F1-((Y*cos(ANEW*PI/180)- X*sin(ANEW*PI/180))**2)/(SS/4)
+         angr = RA(J)*PI/180
+         F2 = 1.00+GGG
+         F2 = F2-(X*cos(angr)+Y*sin(angr))**2/(AR*S/2)**2
+         F2 = F2-(X*sin(angr)-Y*cos(angr))**2/(S/2)**2
 
-         F2=1.00 +GGG
-         F2=F2-((X*cos(RA(J)*PI/180)+ Y*sin(RA(J)*PI/180))**2)
-     +    /(AR*S/2)**2
-         F2=F2-((Y*cos(RA(J)*PI/180)- X*sin(RA(J)*PI/180))**2)/(SS/4)
-         FI=4*(F1**2-3*F2)*(F2**2-3*F1)-(9-F1*F2)**2
+         FI = 4*(F1**2-3*F2)*(F2**2-3*F1)-(9-F1*F2)**2
 
          !FI=0 es tangencia
          !no puntos en com�n es FI positiva y al menos uno de f1, f2 negativos
       
-         if (FI.lt.0.or.(FI.gt.0.and.F1>=0.and.F2>=0).or.RR.lt.SS) !TRUE si se translapan
+         if (.not.((FI==0).or.((FI.gt.0).and.((F1.lt.0).or.(F2.lt.0))))) !TRUE si se translapan
      +    GOTO 3
 
          !Calcula la energia entre el par de particulas
-         if (RR.lt.25*a*a )then !CHECAR condición if
+         if (RR.lt.(5*Kbb*S*AR/2)**2  )then !CHECAR condición if
             ALL=.false.
             call ENERG(UNEW, ALL, X, Y, ANEW, RA(J))
-
          end if
       
     2 CONTINUE   !!!GOTO 2
-
-      !Calculo de la energía de antes o actual del sistema   
-      UOLD=0.0D00
-      DO 4 J=1,N
-         IF (J.EQ.I) GOTO 4
-         X=RX(J)-RX(I)
-         Y=RY(J)-RY(I)
-      
-         ! convencion de imagen m!nima
-         IF (X.GT.0.5D00) THEN
-            X=X-1.0D00
-         ELSE IF (X.LT.-0.5D00) THEN
-            X=X+1.0D00
-         END IF
-         IF (Y.GT.Y2) THEN
-            Y=Y-YC
-         ELSE IF (Y.LT.-Y2) THEN
-            Y=Y+YC
-         END IF
-         RR=X*X+Y*Y
-
-         !!!!!!! CAMBIAR
-         !!Energia pozos angulares
-
-         if (RR.lt. 25*a*a  )then !CHECAR condición if
-            ALL=.false.
-            call ENERG(UOLD, ALL, X, Y, RA(I), RA(J))
-
-         end if
-    4 CONTINUE
       
       !Diferencia de energia entre estados en unidades internacionales
       DENERG=tension*(b_sigma**2)*(UNEW-UOLD)
-      
+
+      ENTVOL = P*(VNEW-VOLD)-((kb*TEMP)*N)*log(VNEW/VOLD)
+
+      DENT = DENERG+ENTVOL
       
       !write(666,*) "indie",UOLD, UNEW,DENERG/(kb*TEMP) !revisalo o quitalo
 
       !Si la energía de la nueva configuración es menor que la energía de laconfiguracioń
       !inicial, entonces aceptamos la nueva configuración
-      IF (DENERG.LE.0.0D00) GOTO 5
+      IF (DENT.LE.0.0D00) GOTO 5
       
       
       ! compara el factor de BOLTZMANN con n#mero al azar
       RND=RAN2(ISEED)
-      IF (RND.GT.EXP(-DENERG/(kb*TEMP))) GOTO 3  !TRUE -> se rechaza la configuración
+      IF (RND.GT.EXP(-DENT/(kb*TEMP))) THEN
+         b_sigma = b_saux
+         GOTO 3  !TRUE -> se rechaza la configuración
+      END IF
       
       ! actualiza posicion de la part!cula I
     5 RX(I)=XNEW        !GOTO 5
       RY(I)=YNEW
       RA(I)=ANEW
+
+      !actualiza volumen
+      S = SNEW
+      VOLD = VNEW
 
       ALL=.true.
       call ENERG(UTOT,ALL,X,Y,ANG,ANG2)
@@ -700,7 +778,7 @@
       if (mod(NCOUNT,500).eq.0) then
          RATACCI=DFLOAT(NAXPTIND)/DFLOAT(Nind)  
          DISPL2=DISPL*(0.65/(1-RATACCI))
-         if (DISPL2.le.2.d0) then
+         if (DISPL2.le.1.d0) then
             DISPL=DISPL2
          end if
       end if 
@@ -785,7 +863,7 @@
       
       !!!!!CHECAR
       I=1
-      DO while (I.NE.0)
+      do while (I.NE.0)
          CALL CLUSTERS(I) 
       end do
 
@@ -811,7 +889,7 @@
 
       !calcula un promedio 
       DO J=1,N
-         IF (J.NE.I.AND.CLU(I,J).NE.0.0D0) THEN
+         IF ((J.NE.I).AND.(CLU(I,J).NE.0.0D0)) THEN
             CX=CX+XNEW1(J)
             CY=CY+YNEW1(J)
             K=K+1
@@ -828,7 +906,7 @@
       end if
 
       DO J=1,N
-         IF (J.NE.I.AND.CLU(I,J).NE.0.0D0) THEN
+         IF ((J.NE.I).AND.(CLU(I,J)).NE.0.0D0) THEN
             IF (ABS(XNEW1(J)-CX)<0.4.AND.ABS(YNEW1(J)-CY)<0.4) then
                K=K+1
             end if
@@ -839,7 +917,7 @@
       !!!!!!!
 
       ! giro en angulo
-      DA=DISPLAng*(RAN2(ISEED)-0.5D0)
+      DA=DISPLAng*(2*RAN2(ISEED)-1.D0)
       ANEW1(I)=ANEW1(I)+DA
       X=XNEW1(I)-CX
       Y=YNEW1(I)-CY
@@ -859,115 +937,28 @@
             YNEW1(J)=X*SIN(DA*PI/180)+Y*COS(DA*PI/180)+CY
          end if
       end do
-      !!!!
-
-      do J=1,N
-         if (CLU(I,J).NE.0.0D0) then ! si los valores diferentes de cero, (clu es un valor de 0 o 1)            
-            ! condicion periodica de frontera
-            IF(XNEW1(J).GT.1.0D00) THEN 
-               XNEW1(J)=XNEW1(J)-1.0D00 ! disminuye su valor si se excede 
-            End if
-            IF (XNEW1(J).LT.0.0D00) THEN
-               XNEW1(J)=XNEW1(J)+1.0D00 ! aumenta el valor si le falta
-            END IF
-            IF (YNEW1(J).GT.YC) THEN
-               YNEW1(J)=YNEW1(J)-YC 
-            END IF
-            IF (YNEW1(J).LT.0.0D00) THEN
-               YNEW1(J)=YNEW1(J)+YC
-            END IF
-            if (ANEW1(J).gt.180) then
-               ANEW1(J)=ANEW1(J)-180
-            end if
-            if(ANEW1(J).lt.0) then
-               ANEW1(J)=ANEW1(J)+180
-            end if
-         end if
-      end do
-
-      do j=1,N 
-         X=XNEW1(J)-CX
-         Y=YNEW1(J)-CY
-         if ((XNEW1(J).gt.1.d0).or.(XNEW1(J).lt.0.d0)) then
-            write(*,*) "NCOUNT=", NCOUNT
-            write(*,*) "DisplClu=", DISPLCLU
-            write(*,*) "XNEW=", XNEW1(J)            
-            write(*,*) "RX=", RX(J)
-            write(*,*) "d=", (RX(J)-RX(I))**2+(RY(J)-RY(I))**2
-            write(*,*) "DX=",DX, "DY=",DY
-            write(*,*) "Part", J, I
-            write(*,*) X*COS(DA*PI/180)-Y*SIN(DA*PI/180)+CX
-            write(*,*) X*SIN(DA*PI/180)+Y*COS(DA*PI/180)+CY
-            write(*,*) X, Y
-         end if
-         if ((YNEW1(J).gt.1.d0).or.(YNEW1(J).lt.0.d0)) then
-            write(*,*) "NCOUNT=", NCOUNT
-            write(*,*) "DisplClu=", DISPLCLU
-            write(*,*) "YNEW=", YNEW1(J)
-            write(*,*) "RY=", RY(J)            
-            write(*,*) "d=", (RX(J)-RX(I))**2+(RY(J)-RY(I))**2
-            write(*,*) "DX=",DX, "DY=",DY
-            write(*,*) "Part", J, I
-            write(*,*) X*COS(DA*PI/180)-Y*SIN(DA*PI/180)+CX
-            write(*,*) X*SIN(DA*PI/180)+Y*COS(DA*PI/180)+CY
-            write(*,*) X, Y
-         end if   
-      end do
       
       ! desplazamiento  X, Y
-    8 DX=DISPLClu*(RAN2(ISEED)-0.5d0) !GOTO 8 
-      DY=DISPLClu*(RAN2(ISEED)-0.5d0)
+    8 DX=DISPLClu*(2*RAN2(ISEED)-1.d0) !GOTO 8 
+      DY=DISPLClu*(2*RAN2(ISEED)-1.d0)
       XNEW1(I)=XNEW1(I)+DX ! agrega desplazamientos a las componentes
       YNEW1(I)=YNEW1(I)+DY
      
       !Condiciones de frontera
-      IF(XNEW1(I).GT.1.0D00) THEN
-         XNEW1(I)=XNEW1(I)-1.0D00 
-      ELSE
-         IF (XNEW1(I).LT.0.0D00) THEN 
-             XNEW1(I)=XNEW1(I)+1.0D00   
-         END IF
-      End if
-
-      IF (YNEW1(I).GT.YC) THEN
-         YNEW1(I)=YNEW1(I)-YC
-      ELSE
-         IF (YNEW1(I).LT.0.0D00) THEN
-           YNEW1(I)=YNEW1(I)+YC
-         END IF
-      End if
-      if (ANEW1(I).gt.180) then
-         ANEW1(I)=ANEW1(I)-180
-      end if
-      if(ANEW1(I).lt.0) then
-         ANEW1(I)=ANEW1(I)+180
-      end if
+      XNEW1(I) = sign(XNEW1(I)-int(XNEW1(I)),1.d0)
+      YNEW1(I) = sign(YNEW1(I)-int(YNEW1(I)),1.d0)
+      ANEW1(I) = 180*sign(ANEW1(I)/180-int(ANEW1(I)/180),1.d0)
 
       !!!!CHECAR
       do J=1,N
-         if (J.NE.I.AND.CLU(I,J).NE.0.0D0) then ! si los valores diferentes de cero, (clu es un valor de 0 o 1)
+         if ((J.NE.I).AND.(CLU(I,J).NE.0.0D0)) then ! si los valores diferentes de cero, (clu es un valor de 0 o 1)
             XNEW1(J)=XNEW1(J)+DX ! actualiza el valor de la nueva x sumandole un desplazamiento
             YNEW1(J)=YNEW1(J)+DY ! actualiza con desplazamiento de y 
             
             ! condicion periodica de frontera
-            IF(XNEW1(J).GT.1.0D00) THEN 
-               XNEW1(J)=XNEW1(J)-1.0D00 ! disminuye su valor si se excede 
-            End if
-            IF (XNEW1(J).LT.0.0D00) THEN
-               XNEW1(J)=XNEW1(J)+1.0D00 ! aumenta el valor si le falta
-            END IF
-            IF (YNEW1(J).GT.YC) THEN
-               YNEW1(J)=YNEW1(J)-YC 
-            END IF
-            IF (YNEW1(J).LT.0.0D00) THEN
-               YNEW1(J)=YNEW1(J)+YC
-            END IF
-            if (ANEW1(J).gt.180) then
-               ANEW1(J)=ANEW1(J)-180
-            end if
-            if(ANEW1(J).lt.0) then
-               ANEW1(J)=ANEW1(J)+180
-            end if
+            XNEW1(J) = sign(XNEW1(J)-int(XNEW1(J)),1.d0)
+            YNEW1(J) = sign(YNEW1(J)-int(YNEW1(J)),1.d0)
+            ANEW1(J) = 180*sign(ANEW1(J)/180-int(ANEW1(J)/180),1.d0)
          end if
       end do
 
@@ -978,6 +969,7 @@
             write(*,*) "XNEW=", XNEW1(J)
             write(*,*) "RX=", RX(J)
             write(*,*) "DX=",DX, "DY=",DY
+            write(*,*) CLU(I,J)
          end if
          if ((YNEW1(J).gt.1.d0).or.(YNEW1(J).lt.0.d0)) then
             write(*,*) "NCOUNT=", NCOUNT
@@ -985,17 +977,29 @@
             write(*,*) "YNEW=", YNEW1(J)            
             write(*,*) "RY=", RY(J)
             write(*,*) "DX=",DX, "DY=",DY
+            write(*,*) CLU(I,J)
          end if   
+         if ((ANEW1(J).gt.180.d0).or.(ANEW1(J).lt.0.d0)) then
+            write(*,*) "NCOUNT=", NCOUNT
+            write(*,*) "DisplClu=", DISPLCLU
+            write(*,*) "ANEW=", ANEW1(J)            
+            write(*,*) "AY=", RY(J)
+            write(*,*) CLU(I,J)
+         end if 
       end do
 
 
 C POSIBLE CAMBIO MAYOR AQUI, EL CODIGO CORRESPONDIENTE A ESTE ESPACIO SE 
 C ENCUENTRA EN EL ARCHIVO extra.txt
 
+      ! Cambia el volumen
+      SNEW = S+DS*(2*RAN2(ISEED)-1.D00)
+      VNEW = VOLD*(SNEW/S)*Kbb**2
+
       ! revisa traslapes
       DO K=1,N
       DO J=1,N
-         IF (J.NE.K)then
+         IF (J.NE.K) then
             X=XNEW1(J)-XNEW1(K)
             Y=YNEW1(J)-YNEW1(K)
 
@@ -1011,31 +1015,35 @@ C ENCUENTRA EN EL ARCHIVO extra.txt
                Y=Y+YC
             END IF
             RR=X*X+Y*Y
+
             !!!!CONDICIONES DE TRASLAPE
             GGG = 2.00 +(AR-(1/AR))**2*(sin((ANEW1(J)-ANEW1(K))
      +       *PI/180))**2
-            F1=-((X*cos(ANEW1(K)*PI/180)+ Y*sin(ANEW1(K)*PI/180))**2)
-            F1=F1/(AR*S/2)**2
-            F1=F1+1.00 + GGG
 
-            F1=F1-((Y*cos(ANEW1(K)*PI/180)- X*sin(ANEW1(K)*PI/180))**2)
-     +       /(SS/4)
+            angr = ANEW1(K)*PI/180
+            F1 = 1.00+GGG
+            F1 = F1-(X*cos(angr)+Y*sin(angr))**2/(AR*S/2)**2
+            F1 = F1-(X*sin(angr)-Y*cos(angr))**2/(S/2)**2
 
-            F2=-((X*cos(ANEW1(J)*PI/180)+ Y*sin(ANEW1(J)*PI/180))**2)
-            F2=F2/(AR*S/2)**2
-            F2=F2+1.00 +GGG
-            F2=F2-((Y*cos(ANEW1(J)*PI/180)- X*sin(ANEW1(J)*PI/180))**2)
-     +       /(SS/4)
-            FI=4*(F1**2-3*F2)*(F2**2-3*F1)-(9-F1*F2)**2
+            angr = ANEW1(J)*PI/180
+            F2 = 1.00+GGG
+            F2 = F2-(X*cos(angr)+Y*sin(angr))**2/(AR*S/2)**2
+            F2 = F2-(X*sin(angr)-Y*cos(angr))**2/(S/2)**2
 
-            if (FI.lt.0.or.(FI.gt.0.and.F1>=0.and.F2>=0).or.RR.lt.SS) 
-     +      GOTO 9
+            FI = 4*(F1**2-3*F2)*(F2**2-3*F1)-(9-F1*F2)**2
+
+            !FI=0 es tangencia
+            !no puntos en com�n es FI positiva y al menos uno de f1, f2 negativos
+      
+            if (.not.((FI==0).or.((FI.gt.0).and. !TRUE si se translapan
+     +      ((F1.lt.0).or.(F2.lt.0))))) GOTO 9
          end if
       end do
       end do
 
       !MARCA
 
+      b_saux = b_sigma
       ALL=.true.
       call ENERG(UTOT,ALL,X,Y,ANG,ANG2)
       UOLD = UTOT
@@ -1049,27 +1057,33 @@ C ENCUENTRA EN EL ARCHIVO extra.txt
       RY(1:N) = YNEW1(1:N) 
       RA(1:N) = ANEW1(1:N)
 
+      b_sigma=Kbb*SNEW/2
       ALL=.true.
       call ENERG(UTOT,ALL,X,Y,ANG,ANG2)
       UNEW = UTOT
       
 
-      DENERG=UNEW-UOLD
+      DENERG=(UNEW-UOLD)*(kb*TEMP)
+
+      ENTVOL = P*(VNEW-VOLD)-((kb*TEMP)*N)*log(VNEW/VOLD)
+
+      DENT = (DENERG+ENTVOL)/(kb*TEMP)
 
       !write(666,*) "clus",UOLD, UNEW, UNEW-UOLD , DENERG !revisar o quitar
 
       
       !Si la energía de la nueva configuración es menor que la energía de laconfiguracioń
       !inicial, entonces aceptamos la nueva configuración
-      IF (DENERG.LE.0.0D00) GOTO 25
+      IF (DENT.LE.0.0D00) GOTO 25
       
       
       ! compara el factor de BOLTZMANN con n#mero al azar
       RND=RAN2(ISEED)
-      IF (RND.GT.EXP(-DENERG)) then
+      IF (RND.GT.EXP(-DENT)) then
          RX(1:N) = AUX1(1:N)
          RY(1:N) = AUX2(1:N)
          RA(1:N) = AUX3(1:N)
+         b_sigma = b_saux
          GOTO 9  !TRUE -> se rechaza la configuración
       end if
       
@@ -1078,6 +1092,10 @@ C ENCUENTRA EN EL ARCHIVO extra.txt
       call ENERG(UTOT,ALL,X,Y,ANG,ANG2)
       NACCPT=NACCPT+1
       NAXPTCLU=NAXPTCLU+1
+
+      !actualiza volumen
+      S = SNEW
+      VOLD = VNEW
 
       !! Revisa vecinos para clusters
       DO I=1,N
@@ -1111,7 +1129,7 @@ C ENCUENTRA EN EL ARCHIVO extra.txt
 
       !! ubica clusters
       I=1
-      DO while (I.NE.0)
+      do while (I.NE.0)
          CALL CLUSTERS(I)
       end do
 
@@ -1204,7 +1222,8 @@ C ENCUENTRA EN EL ARCHIVO extra.txt
       end if
       end if
 
-
+      IF (NCOUNT .GE. NMOVE) GOTO 12
+      
       !Cuando se completen NCLU pasos regresa a Monte Carlo
       !IF (NCOUNT .EQ. NCLU ) THEN
       !   write(6,*) NCOUNT, "CLUSTERS1"
@@ -1238,8 +1257,10 @@ C ENCUENTRA EN EL ARCHIVO extra.txt
          RATACCC=DFLOAT(NAXPTCLU)/DFLOAT(NCL)  
          DISPL2=DISPLClu*(0.6/(1-RATACCC))
          DISPL3=DISPLAng*(0.6*(1-0.1*(RAN2(ISEED)-0.5D0))/(1-RATACCC))
-         if (DISPL2.le.2.d0) then
+         if (DISPL2.le.1.d0) then
             DISPLClu=DISPL2
+         end if
+         if (DISPL3.le.180.d0) then
             DISPLAng=DISPL3
          end if
       end if 
@@ -1362,7 +1383,7 @@ C     Identifica los clusters en la matriz
      +                 CLU(NPART,NPART)
       COMMON /BCONSTR/ PI,ETA,RHO,XLAMBDA,XLAM2,XLAM3,SL2,SQL2,
      +                 SL3,SQL3,XN,TEMP,DISPL,DISPLAng, DISPLClu,XHISTG,
-     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,
+     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,P,DVOL,
      +                 XL,YL,Y2,RA3,A1, A2, A3, A4,a,b,tension,b_sigma
       COMMON /BCONSTG/ DR1,DR2,DR3,DR4,DR5,PHI,TAU
       COMMON /BCOSTRX/ SL4,SQL4,SL5,SQL5,XLAM4,XLAM5
@@ -1411,7 +1432,7 @@ C     Calculo de energia potencial
      +                 CLU(NPART,NPART)
       COMMON /BCONSTR/ PI,ETA,RHO,XLAMBDA,XLAM2,XLAM3,SL2,SQL2,
      +                 SL3,SQL3,XN,TEMP,DISPL,DISPLAng, DISPLClu,XHISTG,
-     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,
+     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,P,DVOL,
      +                 XL,YL,Y2,RA3,A1, A2, A3, A4,a,b,tension,b_sigma
       COMMON /BCONSTG/ DR1,DR2,DR3,DR4,DR5,PHI,TAU
       COMMON /BCOSTRX/ SL4,SQL4,SL5,SQL5,XLAM4,XLAM5
@@ -1423,10 +1444,12 @@ C     Calculo de energia potencial
       LOGICAL LGOFR, JUSTNPT
       LOGICAL ALL 
       double Precision, PARAMETER::   kb=1.380649D-23
+      real*8 :: Kbb
 
       open(unit=25,file="datos/bool.dat",recl=200)
       write(25,*) ALL
       !Si ALL=TRUE calcula la energía de TODO el sistema
+      Kbb = b_sigma/b
       If (ALL .eqv. .true.) then
          U=0
          DO 4 I=1,N-1
@@ -1445,31 +1468,24 @@ C     Calculo de energia potencial
             ELSE IF (Y.LT.-Y2) THEN
                Y=Y+YC
             END IF
+            X = Kbb*X
+            Y = Kbb*Y
             RR=X*X+Y*Y
 
             !!Energia 
-            if (RR .lt. 25*a*a ) then  !!CHECAR condición if
+            if (RR .lt.(5*Kbb*a)**2) then  !!CHECAR condición if
                dist=0
                ANGLE=RA(I)*PI/180 !orientación elipse 1 en radianes, medida respecto a la horizontal
-
                ANGLE2=RA(J)*PI/180 !orientación elipse 2 en radianes, medida respecto a la horizontal
 
                !Angulo entre elipses
                ANGLE3=datan( Y/X )
-               call ellipses( a, b, a, b, ANGLE, ANGLE2, ANGLE3, dist )  !Calcula la distancia de máxima aproximación
+               call ellipses(a,b,a,b,b_sigma,ANGLE,ANGLE2,ANGLE3,dist)  !Calcula la distancia de máxima aproximación
                                                                          !los ángulos tienen que estar medidos respecto a la horizontal 
                                                                          !y en dirección antihoraria para que funcione la subrutina
 
-               pppp= X*dcos(ANGLE)+Y*dsin(ANGLE) !producto punto entre el vector que une los centros y vector unitario de orientación de elipse1
-               pppp=pppp/dsqrt(RR)
-               ANGLE=acos(pppp) !angulo de orientación elipse1 respecto al vector que une los centros 
-
-               pppp= X*dcos(ANGLE2)+Y*dsin(ANGLE2)
-               pppp=pppp/dsqrt(RR)
-               ANGLE2=acos(pppp)  !angulo de orientación elipse2 respecto al vector que une los centros
-
-               U = U - A1*dcos(2*ANGLE2+2*ANGLE)*( b /                     !Potencial SIN UNIDADES
-     +                             ( dsqrt(RR) - A2*dist+A3*b ) )**A4      !el potencial funciona con los ángulos tomados respecto al vector que une los centros
+               U = U - A1*dcos(2*ANGLE2+2*ANGLE)*( b_sigma /                     !Potencial SIN UNIDADES
+     +                             ( dsqrt(RR) - A2*dist+A3 ) )**A4      !el potencial funciona con los ángulos tomados respecto al vector que une los centros
             end if
     4    CONTINUE
          
@@ -1482,24 +1498,14 @@ C     Calculo de energia potencial
          
          dist=0
          ANGLE=ANG*PI/180 !orientación elipse 1 en radianes, medida respecto a la horizontal
-
          ANGLE2=ANG2*PI/180 !orientación elipse 2 en radianes, medida respecto a la horizontal
+
          !Angulo entre elipses
          ANGLE3=datan( Y/X )
-         call ellipses( a, b, a, b, ANGLE, ANGLE2, ANGLE3, dist )
+         call ellipses(a,b,a,b,b_sigma,ANGLE,ANGLE2,ANGLE3,dist)
 
-         pppp= X*dcos(ANGLE)+Y*dsin(ANGLE)
-         pppp=pppp/dsqrt(RR)
-
-         ANGLE=acos(pppp)
-
-         pppp= X*dcos(ANGLE2)+Y*dsin(ANGLE2)
-         pppp=pppp/dsqrt(RR)
-
-         ANGLE2=acos(pppp)
-
-         U = U - A1*dcos(2*ANGLE2+2*ANGLE)*( b /                           !Potencial SIN UNIDADES
-     +                              ( dsqrt(RR) - A2*dist+A3*b ) )**A4
+         U = U - A1*dcos(2*ANGLE2+2*ANGLE)*( b_sigma /                           !Potencial SIN UNIDADES
+     +                              ( dsqrt(RR) - A2*dist+A3 ) )**A4
       end if
 
       RETURN
@@ -1515,7 +1521,7 @@ C     Calcula g(r)
      +                 CLU(NPART,NPART)
       COMMON /BCONSTR/ PI,ETA,RHO,XLAMBDA,XLAM2,XLAM3,SL2,SQL2,
      +                 SL3,SQL3,XN,TEMP,DISPL,DISPLAng, DISPLClu,XHISTG,
-     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,
+     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,P,DVOL,
      +                 XL,YL,Y2,RA3,A1, A2, A3, A4,a,b,tension,b_sigma
       COMMON /BCONSTG/ DR1,DR2,DR3,DR4,DR5,PHI,TAU
       COMMON /BCOSTRX/ SL4,SQL4,SL5,SQL5,XLAM4,XLAM5
@@ -1596,7 +1602,7 @@ C     Calcula g(r)
      +                 CLU(NPART,NPART)
       COMMON /BCONSTR/ PI,ETA,RHO,XLAMBDA,XLAM2,XLAM3,SL2,SQL2,
      +                 SL3,SQL3,XN,TEMP,DISPL,DISPLAng, DISPLClu,XHISTG,
-     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,
+     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,P,DVOL,
      +                 XL,YL,Y2,RA3,A1, A2, A3, A4,a,b,tension,b_sigma
       COMMON /BCONSTG/ DR1,DR2,DR3,DR4,DR5,PHI,TAU
       COMMON /BCOSTRX/ SL4,SQL4,SL5,SQL5,XLAM4,XLAM5
@@ -1648,7 +1654,7 @@ C     Calcula g(r)
      +                 CLU(NPART,NPART)
       COMMON /BCONSTR/ PI,ETA,RHO,XLAMBDA,XLAM2,XLAM3,SL2,SQL2,
      +                 SL3,SQL3,XN,TEMP,DISPL,DISPLAng, DISPLClu,XHISTG,
-     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,
+     +                 S,SS,SSLL,SL,XC,YC,YCINV,DS,P,DVOL,
      +                 XL,YL,Y2,RA3,A1, A2, A3, A4,a,b,tension,b_sigma
       COMMON /BCONSTG/ DR1,DR2,DR3,DR4,DR5,PHI,TAU
       COMMON /BCOSTRX/ SL4,SQL4,SL5,SQL5,XLAM4,XLAM5
@@ -1768,10 +1774,12 @@ C        WRITE(6,*)'INIT.',IDUM
 
       !OUTPUT: dist: distance between the centers when two ellipses are externally tangent, i.e., distance of closest approach
 
-        Subroutine ellipses(a1,b1,a2,b2,theta1,theta2,theta3,dist)
+        Subroutine ellipses(a1,b1,a2,b2,b_sigma,
+     +    theta1,theta2,theta3,dist)
          Implicit None
          Double Complex,parameter::in=(1.d0,0.d0)
          Double Precision,Intent(in)::a1,b1,a2,b2,theta1,theta2,theta3
+     +    ,b_sigma
          Double Precision,Intent(out)::dist
          Double Precision::k1k2,k1d,k2d 
          Double Precision::e1,e2,eta,a11,a12,a22
@@ -1871,7 +1879,7 @@ C        WRITE(6,*)'INIT.',IDUM
          
            ! The distance of closest approach
      
-         dist=Rc*b1/dsqrt(1.d0-e1*k1d**2)
+         dist=Rc*b_sigma/dsqrt(1.d0-e1*k1d**2)
          
       End Subroutine ellipses
       !*************************************
